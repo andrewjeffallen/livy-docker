@@ -1,7 +1,0 @@
-# Python client dependencies for Livy and Spark integration
-livy==0.7.0
-pandas>=1.0.0
-numpy>=1.18.0
-requests>=2.25.0
-wget>=3.2
-
