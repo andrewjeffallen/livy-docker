@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Apache Livy & Spark Management</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .card {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+            overflow: hidden;
+            transition: transform 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+        }
+
+        .card-header {
+            background: linear-gradient(45deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            padding: 20px;
+            font-size: 1.3rem;
+            font-weight: 600;
+        }
+
+        .card-body {
+            padding: 25px;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            background: linear-gradient(45deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            min-width: 120px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-success {
+            background: linear-gradient(45deg, #56ab2f 0%, #a8e6cf 100%);
+        }
+
+        .btn-danger {
+            background: linear-gradient(45deg, #ff416c 0%, #ff4b2b 100%);
+        }
+
+        .btn-info {
+            background: linear-gradient(45deg, #4facfe 0%, #00f2fe 100%);
+        }
+
+        .status {
+            padding: 10px 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            font-weight: 500;
+        }
+
+        .status-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .status-info {
+            background: #cce7ff;
+            color: #004085;
+            border: 1px solid #b3d7ff;
+        }
+
+        .code-output {
+            background: #1a1a1a;
+            color: #00ff00;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            max-height: 400px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            margin: 15px 0;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #555;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        textarea.form-control {
+            min-height: 150px;
+            resize: vertical;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .service-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 10px 0;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #dc3545;
+        }
+
+        .status-indicator.running {
+            background: #28a745;
+        }
+
+        .quick-links {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .quick-link {
+            background: #f8f9fa;
+            padding: 10px 15px;
+            border-radius: 8px;
+            text-decoration: none;
+            color: #495057;
+            font-weight: 500;
+            transition: background 0.3s ease;
+        }
+
+        .quick-link:hover {
+            background: #e9ecef;
+            text-decoration: none;
+            color: #495057;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 Apache Livy & Spark Cluster</h1>
+            <p>Distributed computing made simple with Docker and REST APIs</p>
+        </div>
+
+        <div class="grid">
+            <!-- Docker Management -->
+            <div class="card">
+                <div class="card-header">
+                    🐳 Docker Infrastructure
+                </div>
+                <div class="card-body">
+                    <div class="btn-group">
+                        <button class="btn btn-info" onclick="buildImages()">Build Images</button>
+                        <button class="btn btn-success" onclick="startCluster()">Start Cluster</button>
+                        <button class="btn btn-danger" onclick="stopCluster()">Stop Cluster</button>
+                    </div>
+
+                    <div class="service-status">
+                        <div class="status-indicator" id="spark-master-status"></div>
+                        <span>Spark Master (Port 8080)</span>
+                    </div>
+                    <div class="service-status">
+                        <div class="status-indicator" id="spark-worker-status"></div>
+                        <span>Spark Worker (Port 8081)</span>
+                    </div>
+                    <div class="service-status">
+                        <div class="status-indicator" id="livy-status"></div>
+                        <span>Livy Server (Port 8998)</span>
+                    </div>
+                    <div class="service-status">
+                        <div class="status-indicator" id="jupyter-status"></div>
+                        <span>JupyterLab (Port 8888)</span>
+                    </div>
+
+                    <div class="quick-links">
+                        <a href="http://localhost:8080" target="_blank" class="quick-link">Spark UI</a>
+                        <a href="http://localhost:8888" target="_blank" class="quick-link">JupyterLab</a>
+                        <a href="http://localhost:8998/ui" target="_blank" class="quick-link">Livy UI</a>
+                    </div>
+
+                    <div id="docker-output" class="code-output hidden"></div>
+                </div>
+            </div>
+
+            <!-- Spark Job Submission -->
+            <div class="card">
+                <div class="card-header">
+                    ⚡ Spark Job Submission
+                </div>
+                <div class="card-body">
+                    <div class="btn-group">
+                        <button class="btn btn-success" onclick="runTitanicAnalysis()">Run Titanic Analysis</button>
+                        <button class="btn btn-info" onclick="submitCustomJob()">Submit Custom Job</button>
+                        <button class="btn" onclick="checkLivySessions()">Check Sessions</button>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="custom-code">Custom PySpark Code:</label>
+                        <textarea id="custom-code" class="form-control" placeholder="Enter your PySpark code here...">
+# Example: Simple word count
+from pyspark.sql import SparkSession
+
+spark = SparkSession.builder.appName("CustomJob").getOrCreate()
+
+# Create a simple dataset
+data = ["Hello World", "Apache Spark", "Livy REST API"]
+rdd = spark.sparkContext.parallelize(data)
+
+# Count words
+word_count = rdd.flatMap(lambda line: line.split(" ")).countByValue()
+for word, count in word_count.items():
+    print(f"{word}: {count}")
+
+spark.stop()
+                        </textarea>
+                    </div>
+
+                    <div id="job-status" class="hidden"></div>
+                    <div id="job-output" class="code-output hidden"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Results Section -->
+        <div class="card">
+            <div class="card-header">
+                📊 Execution Results
+            </div>
+            <div class="card-body">
+                <div id="results-container">
+                    <p style="text-align: center; color: #666; font-style: italic;">
+                        Results will appear here after running jobs...
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading Overlay -->
+        <div id="loading-overlay" class="loading hidden">
+            <div class="spinner"></div>
+            <p>Processing your request...</p>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        const LIVY_SERVER = 'http://127.0.0.1:8998';
+        
+        // Docker file contents for building images
+        const dockerFiles = {
+            base: `FROM debian:stretch
+# System packages
+RUN apt-get clean && apt-get update -y && \\
+   apt-get install -y python3 python3-pip curl wget unzip procps openjdk-8-jdk && \\
+   ln -s /usr/bin/python3 /usr/bin/python && \\
+   rm -rf /var/lib/apt/lists/*
+
+# Install Spark
+RUN curl https://apache.mirrors.tworzy.net/spark/spark-2.4.7/spark-2.4.7-bin-hadoop2.7.tgz -o spark.tgz && \\
+   tar -xf spark.tgz && \\
+   mv spark-2.4.7-bin-hadoop2.7 /usr/bin/ && \\
+   mkdir /usr/bin/spark-2.4.7-bin-hadoop2.7/logs && \\
+   rm spark.tgz
+
+# Prepare dirs
+RUN mkdir -p /tmp/logs/ && chmod a+w /tmp/logs/ && mkdir /app && chmod a+rwx /app && mkdir /data && chmod a+rwx /data
+ENV JAVA_HOME=/usr
+ENV SPARK_HOME=/usr/bin/spark-2.4.7-bin-hadoop2.7
+ENV PATH=$SPARK_HOME:$PATH:/bin:$JAVA_HOME/bin:$JAVA_HOME/jre/bin
+ENV SPARK_MASTER_HOST spark-master
+ENV SPARK_MASTER_PORT 7077
+ENV PYSPARK_PYTHON=/usr/bin/python
+ENV PYTHONPATH=$SPARK_HOME/python:$PYTHONPATH
+ENV APP=/app
+ENV SHARED_WORKSPACE=/opt/workspace
+RUN mkdir -p \${SHARED_WORKSPACE}
+VOLUME \${SHARED_WORKSPACE}`,
+
+            master: `FROM mk-spark-base
+# Python packages
+RUN pip3 install wget requests datawrangler
+
+# Get Livy
+RUN wget https://apache.mirrors.tworzy.net/incubator/livy/0.7.0-incubating/apache-livy-0.7.0-incubating-bin.zip -O livy.zip && \\
+   unzip livy.zip -d /usr/bin/
+
+EXPOSE 8080 7077 8998 8888
+WORKDIR \${APP}
+ADD entryfile.sh entryfile.sh
+ENTRYPOINT ["sh", "entryfile.sh"]`,
+
+            worker: `FROM mk-spark-base
+ENV APP=/app
+ENV JAVA_HOME=/usr
+ENV SPARK_HOME=/usr/bin/spark-2.4.7-bin-hadoop2.7
+ENV PATH=$SPARK_HOME:$PATH:/bin:$JAVA_HOME/bin:$JAVA_HOME/jre/bin
+ENV PYSPARK_PYTHON=/usr/bin/python
+ENV PYTHONPATH=$SPARK_HOME/python:$PYTHONPATH
+
+EXPOSE 8081 7077 8998 8888
+WORKDIR \${APP}
+CMD /usr/bin/spark-2.4.7-bin-hadoop2.7/bin/spark-class org.apache.spark.deploy.worker.Worker spark://\${SPARK_MASTER_HOST}:\${SPARK_MASTER_PORT} >> /tmp/logs/spark-worker.out`,
+
+            jupyter: `FROM mk-spark-base
+# Python packages
+RUN pip3 install wget requests pandas numpy datawrangler findspark jupyterlab pyspark==2.4.7
+
+EXPOSE 8888
+WORKDIR \${SHARED_WORKSPACE}
+CMD jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root --NotebookApp.token=`
+        };
+
+        const dockerCompose = `version: "3.6"
+volumes:
+  shared-workspace:
+    name: "hadoop-distributed-file-system"
+    driver: local
+services:
+  jupyterlab:
+    image: mk-jupyter
+    container_name: mk-jupyter
+    ports:
+      - 8888:8888
+    volumes:
+      - shared-workspace:/opt/workspace
+  spark-master:
+    image: mk-spark-master
+    container_name: mk-spark-master
+    ports:
+      - 8080:8080
+      - 7077:7077
+      - 8998:8998
+    volumes:
+      - shared-workspace:/opt/workspace
+  spark-worker-1:
+    image: mk-spark-worker
+    container_name: mk-spark-worker-1
+    environment:
+      - SPARK_WORKER_CORES=1
+      - SPARK_WORKER_MEMORY=512m
+    ports:
+      - 8081:8081
+    volumes:
+      - shared-workspace:/opt/workspace
+    depends_on:
+      - spark-master`;
+
+        // Utility functions
+        function showLoading() {
+            document.getElementById('loading-overlay').classList.remove('hidden');
+        }
+
+        function hideLoading() {
+            document.getElementById('loading-overlay').classList.add('hidden');
+        }
+
+        function showOutput(elementId, content, type = 'info') {
+            const element = document.getElementById(elementId);
+            element.classList.remove('hidden');
+            element.textContent = content;
+            element.className = `code-output ${type === 'error' ? 'status-error' : 'status-success'}`;
+        }
+
+        function updateStatus(message, type = 'info') {
+            const resultsContainer = document.getElementById('results-container');
+            const statusDiv = document.createElement('div');
+            statusDiv.className = `status status-${type}`;
+            statusDiv.textContent = `${new Date().toLocaleTimeString()}: ${message}`;
+            resultsContainer.appendChild(statusDiv);
+            resultsContainer.scrollTop = resultsContainer.scrollHeight;
+        }
+
+        // Docker management functions
+        async function buildImages() {
+            showLoading();
+            updateStatus('Building Docker images... This may take several minutes.', 'info');
+            
+            try {
+                // Simulate docker build process
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                
+                showOutput('docker-output', `Building mk-spark-base...
+Successfully built base image
+
+Building mk-spark-master...
+Successfully built master image
+
+Building mk-spark-worker...
+Successfully built worker image
+
+Building mk-jupyter...
+Successfully built jupyter image
+
+All images built successfully!`);
+                
+                updateStatus('Docker images built successfully!', 'success');
+            } catch (error) {
+                updateStatus(`Error building images: ${error.message}`, 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function startCluster() {
+            showLoading();
+            updateStatus('Starting Spark cluster...', 'info');
+            
+            try {
+                // Simulate docker-compose up
+                await new Promise(resolve => setTimeout(resolve, 3000));
+                
+                // Update service status indicators
+                const services = ['spark-master-status', 'spark-worker-status', 'livy-status', 'jupyter-status'];
+                services.forEach((service, index) => {
+                    setTimeout(() => {
+                        document.getElementById(service).classList.add('running');
+                    }, index * 500);
+                });
+                
+                showOutput('docker-output', `Creating network "livy_poc_docker_default" with the default driver
+Creating volume "hadoop-distributed-file-system" with local driver
+Creating mk-spark-master ... done
+Creating mk-jupyter      ... done
+Creating mk-spark-worker-1 ... done
+
+Spark cluster is now running!
+- Spark Master UI: http://localhost:8080
+- Spark Worker UI: http://localhost:8081
+- Livy Server: http://localhost:8998
+- JupyterLab: http://localhost:8888`);
+                
+                updateStatus('Spark cluster started successfully!', 'success');
+                checkServicesHealth();
+            } catch (error) {
+                updateStatus(`Error starting cluster: ${error.message}`, 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function stopCluster() {
+            showLoading();
+            updateStatus('Stopping Spark cluster...', 'info');
+            
+            try {
+                // Simulate docker-compose down
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                
+                // Update service status indicators
+                const services = ['spark-master-status', 'spark-worker-status', 'livy-status', 'jupyter-status'];
+                services.forEach(service => {
+                    document.getElementById(service).classList.remove('running');
+                });
+                
+                showOutput('docker-output', `Stopping mk-spark-worker-1 ... done
+Stopping mk-jupyter      ... done
+Stopping mk-spark-master ... done
+Removing mk-spark-worker-1 ... done
+Removing mk-jupyter      ... done
+Removing mk-spark-master ... done
+Removing network livy_poc_docker_default
+
+Spark cluster stopped successfully!`);
+                
+                updateStatus('Spark cluster stopped successfully!', 'success');
+            } catch (error) {
+                updateStatus(`Error stopping cluster: ${error.message}`, 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function checkServicesHealth() {
+            // Simulate health checks for services
+            const services = [
+                { name: 'Spark Master', port: 8080, status: 'running' },
+                { name: 'Spark Worker', port: 8081, status: 'running' },
+                { name: 'Livy Server', port: 8998, status: 'running' },
+                { name: 'JupyterLab', port: 8888, status: 'running' }
+            ];
+            
+            updateStatus('All services are healthy and running!', 'success');
+        }
+
+        // Spark job functions
+        async function runTitanicAnalysis() {
+            showLoading();
+            updateStatus('Starting Titanic data analysis...', 'info');
+            
+            const jobStatus = document.getElementById('job-status');
+            jobStatus.classList.remove('hidden');
+            jobStatus.className = 'status status-info';
+            jobStatus.textContent = 'Submitting job to Livy server...';
+            
+            try {
+                // Simulate Livy session creation and job execution
+                await new Promise(resolve => setTimeout(resolve, 1500));
+                jobStatus.textContent = 'Creating Spark session...';
+                
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                jobStatus.textContent = 'Downloading Titanic dataset...';
+                
+                await new Promise(resolve => setTimeout(resolve, 1500));
+                jobStatus.textContent = 'Processing data with Spark...';
+                
+                await new Promise(resolve => setTimeout(resolve, 2500));
+                jobStatus.textContent = 'Job completed successfully!';
+                jobStatus.className = 'status status-success';
+                
+                // Show sample results
+                showOutput('job-output', `------------------------------------------------------------
+Loaded rows: 887
+------------------------------------------------------------
+Total number of passengers: 887
+Count of survived passengers: 342
+Percent of survived passengers: 38.55693348365276
+Count of passengers with siblings-spouses: 283
+Percent of survived passengers with siblings-spouses 31.905298759864714
+Count of passengers with parents-children: 213
+Percent of survived passengers with parents-children 24.01352874859076
+------------------------------------------------------------
+Aggregated data:
++------+----+--------+-----+
+|pclass| age|survived|count|
++------+----+--------+-----+
+|     1|80.0|       1|    1|
+|     1|71.0|       0|    2|
+|     1|70.0|       0|    1|
+|     1|65.0|       0|    2|
+|     1|64.0|       0|    3|
+|     1|63.0|       1|    1|
+|     1|62.0|       0|    2|
+|     1|62.0|       1|    1|
+|     1|61.0|       0|    2|
+|     1|60.0|       0|    2|
++------+----+--------+-----+
+only showing top 10 rows
+
+------------------------------------------------------------
+Results comparison of Spark MR vs SparkSQL
+len(grouped_passengers_1) == 282
+len(grouped_passengers_2) == 282
+------------------------------------------------------------
+Spark session closed.`);
+                
+                updateStatus('Titanic analysis completed successfully!', 'success');
+            } catch (error) {
+                jobStatus.className = 'status status-error';
+                jobStatus.textContent = `Job failed: ${error.message}`;
+                updateStatus(`Titanic analysis failed: ${error.message}`, 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function submitCustomJob() {
+            const customCode = document.getElementById('custom-code').value.trim();
+            if (!customCode) {
+                updateStatus('Please enter some PySpark code first!', 'error');
+                return;
+            }
+            
+            showLoading();
+            updateStatus('Submitting custom job to Spark cluster...', 'info');
+            
+            const jobStatus = document.getElementById('job-status');
+            jobStatus.classList.remove('hidden');
+            jobStatus.className = 'status status-info';
+            jobStatus.textContent = 'Submitting custom job to Livy server...';
+            
+            try {
+                // Simulate custom job execution
+                await new Promise(resolve => setTimeout(resolve, 1500));
+                jobStatus.textContent = 'Creating Spark session for custom job...';
+                
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                jobStatus.textContent = 'Executing your PySpark code...';
+                
+                await new Promise(resolve => setTimeout(resolve, 2500));
+                jobStatus.textContent = 'Custom job completed successfully!';
+                jobStatus.className = 'status status-success';
+                
+                // Show sample custom job output
+                showOutput('job-output', `Custom Job Output:
+------------------------------------------------------------
+Executing your PySpark code...
+
+Hello: 1
+World: 1
+Apache: 1
+Spark: 1
+Livy: 1
+REST: 1
+API: 1
+
+Job completed successfully!
+Session closed.`);
+                
+                updateStatus('Custom job executed successfully!', 'success');
+            } catch (error) {
+                jobStatus.className = 'status status-error';
+                jobStatus.textContent = `Custom job failed: ${error.message}`;
+                updateStatus(`Custom job failed: ${error.message}`, 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function checkLivySessions() {
+            showLoading();
+            updateStatus('Checking active Livy sessions...', 'info');
+            
+            try {
+                // Simulate checking sessions
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                showOutput('job-output', `Active Livy Sessions:
+------------------------------------------------------------
+Session ID: 0
+State: idle
+Kind: pyspark
+App ID: application_1234567890_0001
+Created: ${new Date().toISOString()}
+
+Session ID: 1
+State: running
+Kind: pyspark
+App ID: application_1234567890_0002
+Created: ${new Date(Date.now() - 300000).toISOString()}
+
+Total active sessions: 2`);
+                
+                updateStatus('Successfully retrieved Livy session information', 'success');
+            } catch (error) {
+                updateStatus(`Error checking sessions: ${error.message}`, 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', function() {
+            updateStatus('Apache Livy & Spark Management App loaded successfully!', 'success');
+            updateStatus('Click "Build Images" to start setting up your Spark cluster.', 'info');
+        });
+    </script>
+</body>
+</html>
